@@ -3,11 +3,16 @@
 import Link from 'next/link'
 import { usePayment } from '@/context/PaymentContext'
 import { FileText, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function Navbar() {
   const { paymentState } = usePayment()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <nav className="glass border-b border-white/5 sticky top-0 z-40 backdrop-blur-xl bg-[#0B0F19]/80">
@@ -25,12 +30,12 @@ export default function Navbar() {
             <Link href="/pricing" className="text-[#A0AEC0] hover:text-white transition-colors duration-300 text-base">
               Harga
             </Link>
-            {paymentState.isPaid && (
+            {mounted && paymentState.isPaid && (
               <Link href="/dashboard" className="text-[#A0AEC0] hover:text-white transition-colors duration-300 text-base">
                 Dashboard
               </Link>
             )}
-            {!paymentState.isPaid && (
+            {mounted && !paymentState.isPaid && (
               <Link href="/pricing" className="btn-primary glow-effect text-base px-6 py-3">
                 Mulai Sekarang
               </Link>
@@ -55,12 +60,12 @@ export default function Navbar() {
             <Link href="/pricing" className="block text-[#A0AEC0] hover:text-white transition-colors">
               Harga
             </Link>
-            {paymentState.isPaid && (
+            {mounted && paymentState.isPaid && (
               <Link href="/dashboard" className="block text-[#A0AEC0] hover:text-white transition-colors">
                 Dashboard
               </Link>
             )}
-            {!paymentState.isPaid && (
+            {mounted && !paymentState.isPaid && (
               <Link href="/pricing" className="btn-primary block text-center glow-effect">
                 Mulai Sekarang
               </Link>

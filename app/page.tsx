@@ -17,8 +17,8 @@ export default function Home() {
   const stats = [
     { value: '10,000+', label: 'Audit Selesai' },
     { value: '500+', label: 'Perusahaan Klien' },
-    { value: '98%', label: 'Tingkat Kepuasan' },
-    { value: '24/7', label: 'Dukungan AI' },
+    { value: '5 Menit', label: 'Penyelesaian Rata-Rata' },
+    { value: '24/7', label: 'Uptime' },
   ]
 
   const features = [
