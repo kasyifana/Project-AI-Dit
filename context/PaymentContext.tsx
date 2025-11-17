@@ -9,7 +9,7 @@ interface PaymentState {
   auditResult: AuditResult | null
 }
 
-interface OrderData {
+export interface OrderData {
   name: string
   email: string
   company: string
@@ -21,7 +21,7 @@ interface OrderData {
   websiteUrl?: string
 }
 
-interface AuditResult {
+export interface AuditResult {
   id: string
   date: string
   type: string
@@ -31,7 +31,7 @@ interface AuditResult {
   actionItems: ActionItem[]
 }
 
-interface Finding {
+export interface Finding {
   id: string
   title: string
   severity: 'High' | 'Medium' | 'Low'
@@ -39,7 +39,7 @@ interface Finding {
   impact: string
 }
 
-interface ActionItem {
+export interface ActionItem {
   id: string
   task: string
   priority: 'High' | 'Medium' | 'Low'

@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
+import { scanMulti } from '@/lib/services/auditApi'
+import { transformScanResultsToAuditResult } from '@/lib/utils/transformResults'
 import { 
   CheckCircle, 
   Brain, 
@@ -17,7 +19,8 @@ import {
   Shield,
   Gauge,
   Accessibility,
-  HelpCircle
+  HelpCircle,
+  Loader2
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -33,6 +36,7 @@ export default function DashboardPage() {
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [showFocusInfo, setShowFocusInfo] = useState(false)
+  const [scanProgress, setScanProgress] = useState<string>('')
 
   useEffect(() => {
     if (!paymentState.isPaid || paymentState.paymentStatus !== 'verified') {
@@ -54,71 +58,87 @@ export default function DashboardPage() {
       return
     }
 
-    setIsProcessing(true)
+    // Validate URL format
+    try {
+      new URL(auditData.url)
+    } catch {
+      showToast('Format URL tidak valid. Pastikan URL diawali dengan http:// atau https://', 'error')
+      return
+    }
 
-    // Simulate AI processing
-    setTimeout(() => {
-      const mockResult = {
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString(),
-        type: 'Website Blackbox',
-        summary: 'Audit website selesai. Ditemukan beberapa temuan terkait performa, keamanan, SEO, dan aksesibilitas yang perlu diperbaiki.',
-        findings: [
-          {
-            id: '1',
-            title: 'Skor performa rendah pada halaman utama',
-            severity: 'High' as const,
-            description: 'First Contentful Paint dan Largest Contentful Paint melebihi ambang batas rekomendasi.',
-            impact: 'Pengalaman pengguna buruk dan menurunkan konversi.',
-          },
-          {
-            id: '2',
-            title: 'Header keamanan tidak lengkap',
-            severity: 'Medium' as const,
-            description: 'Tidak ditemukan Strict-Transport-Security atau Content-Security-Policy.',
-            impact: 'Meningkatkan risiko serangan XSS dan downgrade SSL.',
-          },
-          {
-            id: '3',
-            title: 'Elemen gambar tanpa atribut alt',
-            severity: 'Low' as const,
-            description: 'Beberapa gambar tidak memiliki teks alternatif untuk screen reader.',
-            impact: 'Menurunkan aksesibilitas bagi pengguna berkebutuhan khusus.',
-          },
-        ],
-        recommendations: [
-          'Optimalkan aset statis dan gunakan teknik lazy-loading.',
-          'Tambahkan header keamanan standar dan tinjau konfigurasi server.',
-          'Lengkapi atribut alt pada semua gambar dan label form.',
-          'Tinjau meta tags untuk SEO dasar (title, description, canonical).',
-        ],
-        actionItems: [
-          {
-            id: '1',
-            task: 'Perbaiki LCP dengan optimasi hero image',
-            priority: 'High' as const,
-            deadline: '2025-12-01',
-          },
-          {
-            id: '2',
-            task: 'Tambahkan Content-Security-Policy minimum',
-            priority: 'Medium' as const,
-            deadline: '2025-12-05',
-          },
-          {
-            id: '3',
-            task: 'Audit alt text dan label form',
-            priority: 'Low' as const,
-            deadline: '2025-12-10',
-          },
-        ],
+    setIsProcessing(true)
+    setScanProgress('Memulai scan...')
+
+    try {
+      // Call Multi-Scan API
+      setScanProgress('Menjalankan multi-scan (ports, SQL, web, XSS, SSL, headers, tech, subdomains)...')
+      const response = await scanMulti(auditData.url)
+
+      // Check if we have data even if response.success is false
+      // Sometimes MCP server errors but scan data is still available
+      if (!response.success) {
+        // If we have data despite error, use it
+        if (response.data) {
+          console.warn('Using data from error response')
+          // Continue to process the data below
+        } else {
+          // No data available, show error
+          throw new Error(response.error || 'Gagal melakukan scan')
+        }
       }
 
-      setAuditResult(mockResult)
+      setScanProgress('Menganalisis hasil dengan AI...')
+
+      // Check if this is partial data
+      const isPartialData = (response as any).partial || (response as any).warning
+      
+      // Transform API results to AuditResult format (with LLM analysis if available)
+      const auditResult = await transformScanResultsToAuditResult(
+        auditData.url,
+        response.data || null,
+        {},
+        {
+          focusArea: auditData.focusArea,
+          notes: auditData.notes,
+          useLLM: !isPartialData, // Skip LLM if data is partial
+        }
+      )
+
+      // Add warning if partial data
+      if (isPartialData) {
+        auditResult.summary = '⚠️ Data parsial: ' + auditResult.summary
+        auditResult.type = auditResult.type + ' (Data Parsial)'
+      }
+
+      setAuditResult(auditResult)
       setIsProcessing(false)
-      showToast('Audit selesai! Lihat hasil audit Anda.', 'success')
+      setScanProgress('')
+      
+      if (isPartialData) {
+        showToast('Audit selesai (data parsial - beberapa informasi mungkin tidak lengkap).', 'warning')
+      } else {
+        showToast('Audit selesai! Lihat hasil audit Anda.', 'success')
+      }
+      
       router.push('/result')
-    }, 3000)
+    } catch (error) {
+      console.error('Scan error:', error)
+      setIsProcessing(false)
+      setScanProgress('')
+      
+      // More user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat melakukan scan'
+      
+      // Check if error mentions scan completion
+      if (errorMessage.includes('SSL analysis completed') || errorMessage.includes('Scan completed')) {
+        showToast('Scan selesai namun terjadi error. Silakan coba lagi atau hubungi support.', 'warning')
+      } else {
+        showToast(
+          `Error: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`,
+          'error'
+        )
+      }
+    }
   }
 
   if (!paymentState.isPaid || paymentState.paymentStatus !== 'verified') {
@@ -213,6 +233,15 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  {scanProgress && (
+                    <div className="bg-[#1FB6FF]/10 border border-[#1FB6FF]/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="w-5 h-5 text-[#1FB6FF] animate-spin" />
+                        <span className="text-sm text-[#A0AEC0]">{scanProgress}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="submit"
                     disabled={isProcessing}
@@ -221,7 +250,7 @@ export default function DashboardPage() {
                     {isProcessing ? (
                       <>
                         <Brain className="inline mr-2 w-5 h-5 animate-pulse" />
-                        Memproses dengan AI...
+                        Memproses Scan...
                       </>
                     ) : (
                       <>

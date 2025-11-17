@@ -1,16 +1,16 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback } from 'react'
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 
 interface Toast {
   id: string
   message: string
-  type: 'success' | 'error' | 'info'
+  type: 'success' | 'error' | 'info' | 'warning'
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: 'success' | 'error' | 'info') => void
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
@@ -18,7 +18,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined)
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
     const id = Math.random().toString(36).substr(2, 9)
     setToasts(prev => [...prev, { id, message, type }])
     
@@ -44,6 +44,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               ${toast.type === 'success' ? 'bg-green-500/90 border-green-400/50 text-white' : ''}
               ${toast.type === 'error' ? 'bg-red-500/90 border-red-400/50 text-white' : ''}
               ${toast.type === 'info' ? 'bg-primary-500/90 border-primary-400/50 text-white' : ''}
+              ${toast.type === 'warning' ? 'bg-yellow-500/90 border-yellow-400/50 text-white' : ''}
               animate-in slide-in-from-right
               transform transition-all duration-300 hover:scale-105
             `}
@@ -51,6 +52,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
             {toast.type === 'error' && <AlertCircle className="w-5 h-5" />}
             {toast.type === 'info' && <Info className="w-5 h-5" />}
+            {toast.type === 'warning' && <AlertTriangle className="w-5 h-5" />}
             <p className="flex-1">{toast.message}</p>
             <button
               onClick={() => removeToast(toast.id)}
