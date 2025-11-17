@@ -151,6 +151,12 @@ export default function PaymentPage() {
                 <div className="text-gray-600">Paket</div>
                 <div className="font-semibold">{paymentState.orderData.package}</div>
               </div>
+              {paymentState.orderData.websiteUrl && (
+                <div>
+                  <div className="text-gray-600">Website</div>
+                  <div className="font-semibold break-all">{paymentState.orderData.websiteUrl}</div>
+                </div>
+              )}
               <div>
                 <div className="text-gray-600">Tipe Audit</div>
                 <div className="font-semibold">{paymentState.orderData.auditType}</div>

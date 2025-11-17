@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="flex-1">
             <h3 className="text-white text-lg font-semibold mb-2">Audit AI</h3>
             <p className="text-sm text-[#A0AEC0] max-w-md">
-              Layanan audit profesional menggunakan teknologi AI untuk membantu bisnis Anda berkembang.
+              Audit website berbasis AI dengan pendekatan blackbox untuk performa, keamanan, SEO, dan aksesibilitas.
             </p>
           </div>
 

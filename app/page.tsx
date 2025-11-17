@@ -15,32 +15,32 @@ import {
 
 export default function Home() {
   const stats = [
-    { value: '10,000+', label: 'Audit Selesai' },
+    { value: '10,000+', label: 'Website Diaudit' },
     { value: '500+', label: 'Perusahaan Klien' },
-    { value: '5 Menit', label: 'Penyelesaian Rata-Rata' },
+    { value: '5 Menit', label: 'Waktu Audit Rata-Rata' },
     { value: '24/7', label: 'Uptime' },
   ]
 
   const features = [
     {
       icon: Zap,
-      title: 'Cepat & Efisien',
-      description: 'Proses audit yang biasanya memakan waktu minggu, sekarang selesai dalam hitungan hari dengan teknologi AI terdepan.',
+      title: 'Crawl & Analisis Cepat',
+      description: 'Audit blackbox otomatis untuk halaman utama dan halaman penting dalam hitungan menit.',
     },
     {
       icon: Shield,
-      title: 'Aman & Terpercaya',
-      description: 'Data Anda dilindungi dengan enkripsi tingkat enterprise dan standar keamanan internasional yang ketat.',
+      title: 'Keamanan Dasar',
+      description: 'Pemeriksaan header keamanan, mixed content, dan konfigurasi HTTPS minimum.',
     },
     {
       icon: BarChart3,
-      title: 'Insight Mendalam',
-      description: 'Analisis yang lebih dalam dengan AI untuk menemukan pola dan risiko yang tidak terlihat oleh mata manusia.',
+      title: 'SEO & Aksesibilitas',
+      description: 'Pemeriksaan meta tags, struktur heading, alt text, kontras warna, dan praktik aksesibilitas.',
     },
     {
       icon: Brain,
-      title: 'AI Canggih',
-      description: 'Menggunakan teknologi machine learning dan deep learning untuk analisis yang akurat dan komprehensif.',
+      title: 'Skor Performa',
+      description: 'Analisis metrik performa seperti LCP, FID, CLS untuk pengalaman pengguna optimal.',
     },
   ]
 
@@ -56,14 +56,13 @@ export default function Home() {
         
         <div className="max-w-7xl mx-auto text-center relative z-10 py-32">
           <h1 className="hero-text text-white mb-8 animate-fade-in">
-            Audit AI
+            Audit Website AI
           </h1>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-light text-[#A0AEC0] mb-12 max-w-4xl mx-auto leading-relaxed animate-slide-up-delay-1">
-            Masa Depan Audit Bisnis
+            Blackbox Testing untuk Performa, Keamanan, SEO, dan Aksesibilitas
           </h2>
           <p className="text-xl md:text-2xl text-[#A0AEC0] mb-16 max-w-3xl mx-auto leading-relaxed animate-slide-up-delay-2">
-            Gunakan kekuatan Artificial Intelligence untuk mengidentifikasi risiko, 
-            peluang, dan rekomendasi strategis untuk bisnis Anda
+            Masukkan URL website Anda dan dapatkan insight komprehensif berbasis AI untuk meningkatkan kualitas dan kepercayaan pengguna.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center animate-slide-up-delay-3">
@@ -153,9 +152,9 @@ export default function Home() {
               <div className="flex items-start gap-6">
                 <div className="text-5xl font-bold text-[#1FB6FF]/30 flex-shrink-0">02</div>
                 <div>
-                  <h3 className="text-2xl font-semibold text-white mb-3">Upload Data</h3>
+                  <h3 className="text-2xl font-semibold text-white mb-3">Masukkan URL Website</h3>
                   <p className="text-[#A0AEC0] text-lg leading-relaxed">
-                    Upload dokumen dan data yang akan diaudit melalui dashboard yang aman dan mudah digunakan.
+                    Masukkan URL website target dan halaman penting yang ingin diuji.
                   </p>
                 </div>
               </div>
@@ -164,9 +163,9 @@ export default function Home() {
               <div className="flex items-start gap-6">
                 <div className="text-5xl font-bold text-[#1FB6FF]/30 flex-shrink-0">03</div>
                 <div>
-                  <h3 className="text-2xl font-semibold text-white mb-3">AI Processing</h3>
+                  <h3 className="text-2xl font-semibold text-white mb-3">AI Blackbox Testing</h3>
                   <p className="text-[#A0AEC0] text-lg leading-relaxed">
-                    Sistem AI kami akan menganalisis data dengan teknologi terdepan untuk menghasilkan insight yang mendalam.
+                    Sistem melakukan crawl dan pengujian blackbox untuk mengumpulkan metrik dan temuan.
                   </p>
                 </div>
               </div>
@@ -177,7 +176,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-2xl font-semibold text-white mb-3">Dapatkan Hasil</h3>
                   <p className="text-[#A0AEC0] text-lg leading-relaxed">
-                    Terima laporan audit lengkap dengan rekomendasi yang actionable dan dapat langsung diimplementasikan.
+                    Terima laporan audit website lengkap dengan rekomendasi yang actionable.
                   </p>
                 </div>
               </div>
@@ -191,10 +190,10 @@ export default function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(31,182,255,0.15),transparent_70%)]"></div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="section-title text-white mb-8">
-            Siap Memulai Audit AI Anda?
+            Siap Memulai Audit Website?
           </h2>
           <p className="text-xl md:text-2xl text-[#A0AEC0] mb-12 max-w-2xl mx-auto leading-relaxed">
-            Pilih paket yang sesuai dan dapatkan insight mendalam untuk bisnis Anda
+            Pilih paket yang sesuai dan audit website Anda dengan AI
           </p>
           <Link href="/pricing" className="btn-primary glow-effect inline-block group text-xl px-12 py-5">
             Lihat Paket & Harga

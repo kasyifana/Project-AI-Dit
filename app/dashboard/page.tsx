@@ -9,13 +9,15 @@ import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
 import { 
   CheckCircle, 
-  Upload, 
-  FileText, 
   Brain, 
-  Clock,
   ArrowRight,
   History,
-  Sparkles
+  Sparkles,
+  Link as LinkIcon,
+  Shield,
+  Gauge,
+  Accessibility,
+  HelpCircle
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -24,12 +26,13 @@ export default function DashboardPage() {
   const { showToast } = useToast()
 
   const [auditData, setAuditData] = useState({
-    description: '',
-    focusArea: '',
-    files: [] as File[],
+    url: paymentState.orderData?.websiteUrl || '',
+    focusArea: paymentState.orderData?.auditType || '',
+    notes: '',
   })
 
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showFocusInfo, setShowFocusInfo] = useState(false)
 
   useEffect(() => {
     if (!paymentState.isPaid || paymentState.paymentStatus !== 'verified') {
@@ -39,25 +42,15 @@ export default function DashboardPage() {
     }
   }, [paymentState, router, showToast])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files)
-      setAuditData({ ...auditData, files: [...auditData.files, ...newFiles] })
-    }
-  }
-
-  const removeFile = (index: number) => {
-    setAuditData({
-      ...auditData,
-      files: auditData.files.filter((_, i) => i !== index),
-    })
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAuditData({ ...auditData, url: e.target.value })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!auditData.description.trim()) {
-      showToast('Masukkan deskripsi atau data yang akan diaudit', 'error')
+    if (!auditData.url.trim()) {
+      showToast('Masukkan URL website yang akan diaudit', 'error')
       return
     }
 
@@ -65,59 +58,58 @@ export default function DashboardPage() {
 
     // Simulate AI processing
     setTimeout(() => {
-      // Generate mock audit result
       const mockResult = {
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toISOString(),
-        type: paymentState.orderData?.auditType || 'Financial',
-        summary: 'Audit telah selesai dilakukan dengan menggunakan teknologi AI. Ditemukan beberapa area yang memerlukan perhatian khusus.',
+        type: 'Website Blackbox',
+        summary: 'Audit website selesai. Ditemukan beberapa temuan terkait performa, keamanan, SEO, dan aksesibilitas yang perlu diperbaiki.',
         findings: [
           {
             id: '1',
-            title: 'Ketidaksesuaian dalam Laporan Keuangan',
+            title: 'Skor performa rendah pada halaman utama',
             severity: 'High' as const,
-            description: 'Ditemukan perbedaan antara laporan keuangan bulanan dan tahunan yang memerlukan investigasi lebih lanjut.',
-            impact: 'Dapat mempengaruhi keputusan strategis dan compliance dengan regulasi.',
+            description: 'First Contentful Paint dan Largest Contentful Paint melebihi ambang batas rekomendasi.',
+            impact: 'Pengalaman pengguna buruk dan menurunkan konversi.',
           },
           {
             id: '2',
-            title: 'Proses Operasional Tidak Optimal',
+            title: 'Header keamanan tidak lengkap',
             severity: 'Medium' as const,
-            description: 'Beberapa proses operasional masih menggunakan metode manual yang dapat diotomatisasi.',
-            impact: 'Mengurangi efisiensi dan meningkatkan risiko human error.',
+            description: 'Tidak ditemukan Strict-Transport-Security atau Content-Security-Policy.',
+            impact: 'Meningkatkan risiko serangan XSS dan downgrade SSL.',
           },
           {
             id: '3',
-            title: 'Gap dalam Dokumentasi',
+            title: 'Elemen gambar tanpa atribut alt',
             severity: 'Low' as const,
-            description: 'Beberapa prosedur operasional standar belum terdokumentasi dengan lengkap.',
-            impact: 'Dapat menyebabkan inkonsistensi dalam pelaksanaan tugas.',
+            description: 'Beberapa gambar tidak memiliki teks alternatif untuk screen reader.',
+            impact: 'Menurunkan aksesibilitas bagi pengguna berkebutuhan khusus.',
           },
         ],
         recommendations: [
-          'Melakukan rekonsiliasi menyeluruh terhadap laporan keuangan untuk memastikan akurasi data.',
-          'Mengimplementasikan sistem otomatisasi untuk proses yang berulang.',
-          'Menyusun dokumentasi lengkap untuk semua prosedur operasional standar.',
-          'Melakukan pelatihan rutin untuk tim terkait prosedur dan best practices.',
+          'Optimalkan aset statis dan gunakan teknik lazy-loading.',
+          'Tambahkan header keamanan standar dan tinjau konfigurasi server.',
+          'Lengkapi atribut alt pada semua gambar dan label form.',
+          'Tinjau meta tags untuk SEO dasar (title, description, canonical).',
         ],
         actionItems: [
           {
             id: '1',
-            task: 'Rekonsiliasi laporan keuangan Q1-Q4',
+            task: 'Perbaiki LCP dengan optimasi hero image',
             priority: 'High' as const,
-            deadline: '2024-02-15',
+            deadline: '2025-12-01',
           },
           {
             id: '2',
-            task: 'Implementasi sistem otomatisasi untuk proses A',
+            task: 'Tambahkan Content-Security-Policy minimum',
             priority: 'Medium' as const,
-            deadline: '2024-03-01',
+            deadline: '2025-12-05',
           },
           {
             id: '3',
-            task: 'Penyusunan dokumentasi SOP',
+            task: 'Audit alt text dan label form',
             priority: 'Low' as const,
-            deadline: '2024-03-15',
+            deadline: '2025-12-10',
           },
         ],
       }
@@ -146,10 +138,10 @@ export default function DashboardPage() {
               <span className="text-sm font-semibold">Pembayaran Terverifikasi ✓</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">
-              Selamat Datang, {paymentState.orderData?.name}!
+              Audit Website Blackbox
             </h1>
             <p className="text-primary-100">
-              Siap untuk memulai audit AI Anda? Upload data dan biarkan AI menganalisis untuk Anda.
+              Masukkan URL website dan lakukan pengujian blackbox terhadap performa, keamanan, SEO, dan aksesibilitas.
             </p>
           </div>
 
@@ -159,87 +151,66 @@ export default function DashboardPage() {
               <div className="card mb-6">
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                   <Sparkles className="w-6 h-6 text-primary-600" />
-                  Mulai Audit Anda
+                  Mulai Audit Blackbox
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-semibold mb-2">
-                      Deskripsi / Data yang Akan Diaudit <span className="text-red-500">*</span>
+                      URL Website <span className="text-red-500">*</span>
                     </label>
-                    <textarea
-                      className="input-field min-h-[200px]"
-                      value={auditData.description}
-                      onChange={(e) => setAuditData({ ...auditData, description: e.target.value })}
-                      placeholder="Masukkan deskripsi, data, atau informasi yang ingin Anda audit. Contoh: Laporan keuangan Q1-Q4 2023, proses operasional departemen X, dll."
+                    <input
+                      type="url"
+                      className="input-field"
+                      value={auditData.url}
+                      onChange={handleUrlChange}
+                      placeholder="https://www.contoh.com"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">
-                      Pilih Fokus Area Audit
-                    </label>
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="block text-sm font-semibold">
+                        Pilih Fokus Area Audit
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowFocusInfo(!showFocusInfo)}
+                        className="p-1 rounded-full bg-[#1FB6FF]/10 hover:bg-[#1FB6FF]/20 text-[#1FB6FF]"
+                        aria-label="Info fokus area"
+                      >
+                        <HelpCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {showFocusInfo && (
+                      <div className="absolute z-20 mt-1 w-full rounded-lg border border-white/10 bg-[#0F1421]/90 backdrop-blur-sm p-3 text-sm text-[#A0AEC0]">
+                        Semua aspek akan tetap diaudit. Pilih fokus utama untuk pendalaman.
+                      </div>
+                    )}
                     <select
                       className="input-field"
                       value={auditData.focusArea}
                       onChange={(e) => setAuditData({ ...auditData, focusArea: e.target.value })}
                     >
                       <option value="">-- Pilih Fokus Area (Opsional) --</option>
-                      <option value="financial">Financial & Accounting</option>
-                      <option value="operational">Operational Efficiency</option>
-                      <option value="compliance">Compliance & Risk</option>
-                      <option value="process">Process Optimization</option>
-                      <option value="data">Data Quality & Integrity</option>
+                      <option value="performance">Performa</option>
+                      <option value="security">Keamanan</option>
+                      <option value="seo">SEO</option>
+                      <option value="accessibility">Aksesibilitas</option>
+                      <option value="functional">Fungsional</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold mb-2">
-                      Upload File (PDF, Excel, Word)
+                      Catatan (Opsional)
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <input
-                        type="file"
-                        id="files"
-                        className="hidden"
-                        multiple
-                        accept=".pdf,.doc,.docx,.xls,.xlsx"
-                        onChange={handleFileChange}
-                      />
-                      <label
-                        htmlFor="files"
-                        className="cursor-pointer text-primary-600 hover:text-primary-700 font-semibold block text-center"
-                      >
-                        Klik untuk upload file
-                      </label>
-                      <p className="text-xs text-gray-500 text-center mt-2">
-                        Maks. 10MB per file. Multiple files diperbolehkan.
-                      </p>
-
-                      {auditData.files.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                          {auditData.files.map((file, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
-                            >
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm">{file.name}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeFile(index)}
-                                className="text-red-500 hover:text-red-700 text-sm"
-                              >
-                                Hapus
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <textarea
+                      className="input-field min-h-[140px]"
+                      value={auditData.notes}
+                      onChange={(e) => setAuditData({ ...auditData, notes: e.target.value })}
+                      placeholder="Masukkan konteks singkat audit, misal: halaman penting, form yang perlu diuji, dsb."
+                    />
                   </div>
 
                   <button
@@ -254,7 +225,7 @@ export default function DashboardPage() {
                       </>
                     ) : (
                       <>
-                        Proses Audit dengan AI
+                        Jalankan Audit Blackbox
                         <ArrowRight className="inline ml-2 w-5 h-5" />
                       </>
                     )}
@@ -296,12 +267,18 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div className="text-gray-600">Tipe Audit</div>
-                    <div className="font-semibold">{paymentState.orderData?.auditType}</div>
+                    <div className="font-semibold">Website Blackbox</div>
                   </div>
                   <div>
                     <div className="text-gray-600">Perusahaan</div>
                     <div className="font-semibold">{paymentState.orderData?.company}</div>
                   </div>
+                  {paymentState.orderData?.websiteUrl && (
+                    <div>
+                      <div className="text-gray-600">Website</div>
+                      <div className="font-semibold break-all">{paymentState.orderData?.websiteUrl}</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -310,15 +287,15 @@ export default function DashboardPage() {
                 <ul className="space-y-3 text-sm text-gray-600">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>Sertakan data yang lengkap dan terbaru</span>
+                    <span>Gunakan URL produksi atau staging yang stabil</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>Jelaskan konteks dan tujuan audit dengan jelas</span>
+                    <span>Jelaskan halaman kritikal dan form yang perlu diuji</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span>Upload file dalam format yang didukung</span>
+                    <span>Pastikan tidak ada blokir bot pada robots/security</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />

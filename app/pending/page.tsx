@@ -6,12 +6,14 @@ import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
+import { useToast } from '@/components/Toast'
 import { Clock, Mail, RefreshCw, CheckCircle } from 'lucide-react'
 
 export default function PendingPage() {
   const router = useRouter()
-  const { paymentState } = usePayment()
+  const { paymentState, setPaymentStatus } = usePayment()
   const [mounted, setMounted] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     setMounted(true)
@@ -29,6 +31,12 @@ export default function PendingPage() {
       router.push('/dashboard')
     }
   }, [paymentState, router, mounted])
+
+  const handleSimulateVerify = () => {
+    setPaymentStatus('verified')
+    showToast('Pembayaran berhasil diverifikasi!', 'success')
+    router.push('/dashboard')
+  }
 
   if (!mounted || !paymentState.orderData) {
     return (
@@ -103,6 +111,12 @@ export default function PendingPage() {
                   <div className="text-[#A0AEC0]">Paket</div>
                   <div className="font-semibold text-white">{paymentState.orderData.package}</div>
                 </div>
+                {paymentState.orderData.websiteUrl && (
+                  <div>
+                    <div className="text-[#A0AEC0]">Website</div>
+                    <div className="font-semibold text-white break-all">{paymentState.orderData.websiteUrl}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-[#A0AEC0]">Tipe Audit</div>
                   <div className="font-semibold text-white">{paymentState.orderData.auditType}</div>
@@ -138,6 +152,14 @@ export default function PendingPage() {
                 >
                   <RefreshCw className="inline mr-2 w-4 h-4" />
                   Cek Status Pembayaran
+                </button>
+              </div>
+              <div className="mt-6 text-center">
+                <button
+                  onClick={handleSimulateVerify}
+                  className="text-sm text-[#A0AEC0] hover:text-[#1FB6FF] underline"
+                >
+                  [Simulasi Verifikasi Berhasil] - Hanya untuk testing
                 </button>
               </div>
             </div>

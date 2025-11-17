@@ -18,6 +18,7 @@ interface OrderData {
   package: string
   price: number
   document?: File | null
+  websiteUrl?: string
 }
 
 interface AuditResult {
@@ -56,23 +57,21 @@ interface PaymentContextType {
 const PaymentContext = createContext<PaymentContextType | undefined>(undefined)
 
 export function PaymentProvider({ children }: { children: React.ReactNode }) {
-  const [paymentState, setPaymentState] = useState<PaymentState>(() => {
+  const [paymentState, setPaymentState] = useState<PaymentState>({
+    isPaid: false,
+    orderData: null,
+    paymentStatus: null,
+    auditResult: null,
+  })
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('paymentState')
-      return saved ? JSON.parse(saved) : {
-        isPaid: false,
-        orderData: null,
-        paymentStatus: null,
-        auditResult: null,
+      if (saved) {
+        setPaymentState(JSON.parse(saved))
       }
     }
-    return {
-      isPaid: false,
-      orderData: null,
-      paymentStatus: null,
-      auditResult: null,
-    }
-  })
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
