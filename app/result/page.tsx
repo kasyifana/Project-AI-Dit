@@ -7,11 +7,11 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
-import { 
-  Download, 
-  CheckCircle, 
-  AlertTriangle, 
-  Info, 
+import {
+  Download,
+  CheckCircle,
+  AlertTriangle,
+  Info,
   ArrowRight,
   Share2,
   TrendingUp,
@@ -30,6 +30,11 @@ export default function ResultPage() {
       router.push('/dashboard')
       return
     }
+
+    // Log audit result for debugging
+    console.log('Audit Result:', paymentState.auditResult)
+    console.log('Total Findings:', paymentState.auditResult.findings.length)
+    console.log('Findings Details:', paymentState.auditResult.findings)
   }, [paymentState, router, showToast])
 
   if (!paymentState.auditResult) {
@@ -199,37 +204,128 @@ export default function ResultPage() {
           {/* Findings */}
           <div className="card mb-8">
             <h2 className="text-2xl font-bold mb-6">Temuan Utama</h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {result.findings.map((finding) => (
                 <div
                   key={finding.id}
-                  className="border-l-4 border-gray-300 pl-4 py-4 bg-gray-50 rounded-r-lg"
+                  className="border-l-4 pl-6 pr-4 py-5 bg-gradient-to-r from-gray-50 to-white rounded-r-xl shadow-sm hover:shadow-md transition-shadow"
                   style={{
                     borderLeftColor:
                       finding.severity === 'High'
                         ? '#ef4444'
                         : finding.severity === 'Medium'
-                        ? '#f59e0b'
-                        : '#10b981',
+                          ? '#f59e0b'
+                          : '#10b981',
                   }}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
                       {getSeverityIcon(finding.severity)}
-                      {finding.title}
-                    </h3>
+                      <h3 className="text-lg font-bold text-gray-900">{finding.title}</h3>
+                    </div>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${getSeverityBadge(
+                      className={`px-3 py-1 rounded-full text-xs font-bold border-2 ${getSeverityBadge(
                         finding.severity
                       )}`}
                     >
                       {finding.severity}
                     </span>
                   </div>
-                  <p className="text-gray-700 mb-2">{finding.description}</p>
-                  <div className="bg-blue-50 rounded p-3 mt-2">
-                    <div className="text-sm font-semibold text-blue-900 mb-1">Dampak:</div>
-                    <div className="text-sm text-blue-800">{finding.impact}</div>
+
+                  {/* Description with markdown-style formatting */}
+                  <div className="prose prose-sm max-w-none mb-4">
+                    {finding.description.split('\n\n').map((paragraph, idx) => {
+                      // Handle bold text **text**
+                      if (paragraph.startsWith('**') && paragraph.includes(':**')) {
+                        const parts = paragraph.split(':**')
+                        return (
+                          <div key={idx} className="mb-3">
+                            <div className="font-bold text-gray-900 mb-1">{parts[0].replace(/\*\*/g, '')}</div>
+                            <div className="text-gray-700 pl-4 border-l-2 border-gray-200">
+                              {parts[1]?.replace(/\*\*/g, '')}
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      // Handle bullet lists
+                      if (paragraph.includes('\n-')) {
+                        const lines = paragraph.split('\n')
+                        const title = lines[0]
+                        const items = lines.slice(1).filter(l => l.trim().startsWith('-'))
+                        return (
+                          <div key={idx} className="mb-3">
+                            {title && <div className="font-semibold text-gray-900 mb-2">{title.replace(/\*\*/g, '')}</div>}
+                            <ul className="list-disc list-inside space-y-1 text-gray-700 pl-2">
+                              {items.map((item, i) => (
+                                <li key={i} className="ml-2">{item.replace(/^-\s*/, '').replace(/\*\*/g, '')}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      }
+
+                      // Handle numbered lists
+                      if (paragraph.match(/^\d+\./)) {
+                        const lines = paragraph.split('\n').filter(l => l.trim())
+                        return (
+                          <ol key={idx} className="list-decimal list-inside space-y-1.5 text-gray-700 pl-2 mb-3">
+                            {lines.map((line, i) => (
+                              <li key={i} className="ml-2">{line.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '')}</li>
+                            ))}
+                          </ol>
+                        )
+                      }
+
+                      // Handle code blocks
+                      if (paragraph.includes('```')) {
+                        const codeMatch = paragraph.match(/```([\s\S]*?)```/)
+                        if (codeMatch) {
+                          return (
+                            <pre key={idx} className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto mb-3 text-xs">
+                              <code>{codeMatch[1].trim()}</code>
+                            </pre>
+                          )
+                        }
+                      }
+
+                      // Handle inline code
+                      const textWithCode = paragraph.split('`').map((part, i) =>
+                        i % 2 === 0 ? part : <code key={i} className="bg-gray-200 px-1.5 py-0.5 rounded text-sm font-mono text-gray-900">{part}</code>
+                      )
+
+                      // Regular paragraph with bold support
+                      return (
+                        <p key={idx} className="text-gray-700 leading-relaxed mb-2">
+                          {textWithCode.map((part, i) =>
+                            typeof part === 'string'
+                              ? part.split('**').map((text, j) =>
+                                j % 2 === 0 ? text : <strong key={j} className="font-bold text-gray-900">{text}</strong>
+                              )
+                              : part
+                          )}
+                        </p>
+                      )
+                    })}
+                  </div>
+
+                  {/* Impact section with styled background */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-sm font-bold text-blue-900 mb-1">Dampak:</div>
+                        <div className="text-sm text-blue-800 leading-relaxed">
+                          {finding.impact.split('\n\n').map((para, idx) => (
+                            <p key={idx} className={idx > 0 ? 'mt-2' : ''}>
+                              {para.split('**').map((text, i) =>
+                                i % 2 === 0 ? text : <strong key={i} className="font-bold">{text}</strong>
+                              )}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -267,8 +363,8 @@ export default function ResultPage() {
                       item.priority === 'High'
                         ? '#ef4444'
                         : item.priority === 'Medium'
-                        ? '#f59e0b'
-                        : '#10b981',
+                          ? '#f59e0b'
+                          : '#10b981',
                   }}
                 >
                   <div className="flex-1">

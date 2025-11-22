@@ -7,7 +7,17 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
-import { scanMulti } from '@/lib/services/auditApi'
+import { 
+  scanPorts, 
+  scanSQL, 
+  scanWeb, 
+  scanXSS, 
+  scanSSL, 
+  scanHeaders, 
+  scanTech, 
+  scanSubdomains,
+  scanCDNBypass 
+} from '@/lib/services/auditApi'
 import { transformScanResultsToAuditResult } from '@/lib/utils/transformResults'
 import { 
   CheckCircle, 
@@ -37,6 +47,10 @@ export default function DashboardPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [showFocusInfo, setShowFocusInfo] = useState(false)
   const [scanProgress, setScanProgress] = useState<string>('')
+  const [currentScan, setCurrentScan] = useState<string>('')
+  const [completedScans, setCompletedScans] = useState<string[]>([])
+  const [scanResults, setScanResults] = useState<any>({})
+  const [quickMode, setQuickMode] = useState(true) // Quick mode by default
 
   useEffect(() => {
     if (!paymentState.isPaid || paymentState.paymentStatus !== 'verified') {
@@ -68,58 +82,153 @@ export default function DashboardPage() {
 
     setIsProcessing(true)
     setScanProgress('Memulai scan...')
+    setCompletedScans([])
+    setScanResults({})
 
     try {
-      // Call Multi-Scan API
-      setScanProgress('Menjalankan multi-scan (ports, SQL, web, XSS, SSL, headers, tech, subdomains)...')
-      const response = await scanMulti(auditData.url)
+      const results: any = {}
+      
+      // Define all available scans
+      const allScans = [
+        { name: 'SSL Certificate', key: 'ssl', fn: () => scanSSL(auditData.url), icon: '🔒', timeout: 30000, essential: true },
+        { name: 'Security Headers', key: 'headers', fn: () => scanHeaders(auditData.url), icon: '🛡️', timeout: 20000, essential: true },
+        { name: 'Port Scan', key: 'ports', fn: () => scanPorts(auditData.url), icon: '🔍', timeout: 60000, essential: true },
+        { name: 'Web Vulnerabilities', key: 'web', fn: () => scanWeb(auditData.url), icon: '🌐', timeout: 120000, essential: true },
+        { name: 'XSS Testing', key: 'xss', fn: () => scanXSS(auditData.url), icon: '⚠️', timeout: 45000, essential: true },
+        { name: 'SQL Injection', key: 'sql', fn: () => scanSQL(auditData.url, { quick: true }), icon: '💉', timeout: 60000, essential: false },
+        { name: 'Technology Detection', key: 'tech', fn: () => scanTech(auditData.url), icon: '⚙️', timeout: 30000, essential: true },
+        { name: 'Subdomain Enumeration', key: 'subdomains', fn: () => scanSubdomains(auditData.url), icon: '🔗', timeout: 45000, essential: true },
+        { name: 'CDN Bypass', key: 'cdn', fn: () => scanCDNBypass(auditData.url), icon: '🌩️', timeout: 30000, essential: true },
+      ]
+      
+      // Filter scans based on quick mode
+      const scans = quickMode 
+        ? allScans.filter(scan => scan.essential)
+        : allScans
 
-      // Check if we have data even if response.success is false
-      // Sometimes MCP server errors but scan data is still available
-      if (!response.success) {
-        // If we have data despite error, use it
-        if (response.data) {
-          console.warn('Using data from error response')
-          // Continue to process the data below
-        } else {
-          // No data available, show error
-          throw new Error(response.error || 'Gagal melakukan scan')
+      // Run scans sequentially
+      for (const scan of scans) {
+        setCurrentScan(scan.name)
+        setScanProgress(`${scan.icon} Scanning ${scan.name}...`)
+        
+        try {
+          // Create timeout promise
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), scan.timeout)
+          )
+          
+          // Race between scan and timeout
+          const response = await Promise.race([
+            scan.fn(),
+            timeoutPromise
+          ]) as any
+          
+          // Enhanced logging for debugging
+          console.group(`📊 ${scan.name} Results`)
+          console.log('Full Response:', response)
+          console.log('Response Success:', response.success)
+          console.log('Response Data:', response.data)
+          
+          // Special logging for web scan
+          if (scan.key === 'web') {
+            console.log('🌐 WEB SCAN DETAILS:')
+            console.log('- Vulnerabilities Array:', response.data?.vulnerabilities)
+            console.log('- Vulnerabilities Count:', response.data?.vulnerabilities?.length || 0)
+            console.log('- Issues Count Field:', response.data?.issues_count)
+            console.log('- Raw Web Object:', JSON.stringify(response.data, null, 2))
+            
+            // Log each vulnerability
+            if (response.data?.vulnerabilities && Array.isArray(response.data.vulnerabilities)) {
+              console.log(`📋 Found ${response.data.vulnerabilities.length} vulnerabilities:`)
+              response.data.vulnerabilities.forEach((vuln: any, idx: number) => {
+                console.log(`  ${idx + 1}. ${vuln.title || vuln.id || 'Unknown'} (${vuln.severity || 'Unknown'})`)
+              })
+            }
+          }
+          console.groupEnd()
+          
+          // Store result even if not successful (might have partial data)
+          if (response.success || response.data) {
+            results[scan.key] = response.data
+            console.log(`✅ ${scan.name} - Data stored in results`)
+          } else {
+            console.warn(`⚠️ ${scan.name} - No data received:`, response.error)
+          }
+          
+          // Mark as completed
+          setCompletedScans(prev => [...prev, scan.name])
+          setScanResults(results)
+          
+          // Small delay for better UX
+          await new Promise(resolve => setTimeout(resolve, 300))
+        } catch (error) {
+          console.error(`Error in ${scan.name}:`, error)
+          
+          // If timeout, show warning but continue
+          if (error instanceof Error && error.message === 'Timeout') {
+            console.warn(`${scan.name} timed out, skipping...`)
+            showToast(`⚠️ ${scan.name} memakan waktu terlalu lama, di-skip`, 'warning')
+          }
+          
+          // Mark as completed even if failed/timeout
+          setCompletedScans(prev => [...prev, scan.name])
+          
+          // Continue with next scan even if one fails
         }
       }
 
-      setScanProgress('Menganalisis hasil dengan AI...')
+      // Log all collected results
+      console.group('📦 ALL SCAN RESULTS SUMMARY')
+      console.log('Complete Results Object:', results)
+      console.log('Web Vulnerabilities:', results.web?.vulnerabilities)
+      console.log('Web Issues Count:', results.web?.issues_count)
+      console.log('SSL Data:', results.ssl)
+      console.log('Headers Data:', results.headers)
+      console.log('XSS Data:', results.xss)
+      console.log('Ports Data:', results.ports)
+      console.groupEnd()
 
-      // Check if this is partial data
-      const isPartialData = (response as any).partial || (response as any).warning
-      
-      // Transform API results to AuditResult format (with LLM analysis if available)
+      setScanProgress('🤖 Menganalisis hasil dengan AI...')
+      setCurrentScan('AI Analysis')
+
+      // Log what we're sending to transform function
+      console.log('🔄 Sending to transformScanResultsToAuditResult:', {
+        url: auditData.url,
+        scanResults: results,
+        options: {
+          focusArea: auditData.focusArea,
+          notes: auditData.notes,
+          useLLM: true,
+        }
+      })
+
+      // Transform API results to AuditResult format
       const auditResult = await transformScanResultsToAuditResult(
         auditData.url,
-        response.data || null,
+        results,
         {},
         {
           focusArea: auditData.focusArea,
           notes: auditData.notes,
-          useLLM: !isPartialData, // Skip LLM if data is partial
+          useLLM: true,
         }
       )
-
-      // Add warning if partial data
-      if (isPartialData) {
-        auditResult.summary = '⚠️ Data parsial: ' + auditResult.summary
-        auditResult.type = auditResult.type + ' (Data Parsial)'
-      }
+      
+      // Log transformed result
+      console.group('🎯 TRANSFORMED AUDIT RESULT')
+      console.log('Audit Result:', auditResult)
+      console.log('Total Findings:', auditResult.findings.length)
+      console.log('Findings Details:', auditResult.findings)
+      console.log('Recommendations:', auditResult.recommendations)
+      console.log('Action Items:', auditResult.actionItems)
+      console.groupEnd()
 
       setAuditResult(auditResult)
       setIsProcessing(false)
       setScanProgress('')
+      setCurrentScan('')
       
-      if (isPartialData) {
-        showToast('Audit selesai (data parsial - beberapa informasi mungkin tidak lengkap).', 'warning')
-      } else {
-        showToast('Audit selesai! Lihat hasil audit Anda.', 'success')
-      }
-      
+      showToast('✅ Audit selesai! Lihat hasil audit Anda.', 'success')
       router.push('/result')
     } catch (error) {
       console.error('Scan error:', error)
@@ -226,18 +335,100 @@ export default function DashboardPage() {
                       Catatan (Opsional)
                     </label>
                     <textarea
-                      className="input-field min-h-[140px]"
+                      className="input-field min-h-[100px]"
                       value={auditData.notes}
                       onChange={(e) => setAuditData({ ...auditData, notes: e.target.value })}
                       placeholder="Masukkan konteks singkat audit, misal: halaman penting, form yang perlu diuji, dsb."
                     />
                   </div>
 
-                  {scanProgress && (
-                    <div className="bg-[#1FB6FF]/10 border border-[#1FB6FF]/20 rounded-lg p-4 mb-4">
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="w-5 h-5 text-[#1FB6FF] animate-spin" />
-                        <span className="text-sm text-[#A0AEC0]">{scanProgress}</span>
+                  {/* Quick Mode Toggle */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id="quickMode"
+                        checked={quickMode}
+                        onChange={(e) => setQuickMode(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <label htmlFor="quickMode" className="font-semibold cursor-pointer">
+                          ⚡ Quick Mode (Recommended)
+                        </label>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Skip SQL Injection scan yang memakan waktu lama (~3-5 menit). 
+                          Quick mode hanya butuh ~2-3 menit untuk menyelesaikan semua scan lainnya.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isProcessing && (
+                    <div className="bg-gradient-to-r from-[#1FB6FF]/10 to-primary-600/10 border border-[#1FB6FF]/20 rounded-lg p-6 mb-4">
+                      {/* Current Scan Progress */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <Loader2 className="w-6 h-6 text-[#1FB6FF] animate-spin" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-white">{scanProgress}</div>
+                          {currentScan && (
+                            <div className="text-sm text-[#A0AEC0] mt-1">
+                              {completedScans.length}/{quickMode ? 8 : 9} scans completed
+                              {quickMode && ' (Quick Mode)'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+                        <div 
+                          className="bg-gradient-to-r from-[#1FB6FF] to-primary-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${(completedScans.length / (quickMode ? 8 : 9)) * 100}%` }}
+                        />
+                      </div>
+
+                      {/* Scan Checklist */}
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {[
+                          { name: 'SSL Certificate', icon: '🔒', skippable: false },
+                          { name: 'Security Headers', icon: '🛡️', skippable: false },
+                          { name: 'Port Scan', icon: '🔍', skippable: false },
+                          { name: 'Web Vulnerabilities', icon: '🌐', skippable: false },
+                          { name: 'XSS Testing', icon: '⚠️', skippable: false },
+                          { name: 'SQL Injection', icon: '💉', skippable: true },
+                          { name: 'Technology Detection', icon: '⚙️', skippable: false },
+                          { name: 'Subdomain Enumeration', icon: '🔗', skippable: false },
+                          { name: 'CDN Bypass', icon: '🌩️', skippable: false },
+                        ].map((scan) => {
+                          const isSkipped = quickMode && scan.skippable
+                          return (
+                            <div
+                              key={scan.name}
+                              className={`flex items-center gap-2 px-3 py-2 rounded ${
+                                isSkipped
+                                  ? 'bg-gray-900/50 text-gray-600 line-through'
+                                  : completedScans.includes(scan.name)
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : currentScan === scan.name
+                                  ? 'bg-[#1FB6FF]/20 text-[#1FB6FF] animate-pulse'
+                                  : 'bg-gray-800/50 text-gray-500'
+                              }`}
+                            >
+                              <span>{scan.icon}</span>
+                              <span className="text-xs">
+                                {scan.name}
+                                {isSkipped && ' (Skipped)'}
+                              </span>
+                              {!isSkipped && completedScans.includes(scan.name) && (
+                                <CheckCircle className="w-3 h-3 ml-auto" />
+                              )}
+                              {!isSkipped && currentScan === scan.name && (
+                                <Loader2 className="w-3 h-3 ml-auto animate-spin" />
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}

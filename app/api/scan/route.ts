@@ -2,6 +2,7 @@
 // Route: /api/scan
 
 import { NextRequest, NextResponse } from 'next/server'
+import { parseMultiScanMarkdownReport } from '@/lib/utils/parseMarkdownReport'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://103.31.39.95:3000'
 const TIMEOUT = 300000 // 5 minutes
@@ -12,7 +13,7 @@ const TIMEOUT = 300000 // 5 minutes
  */
 function extractScanDataFromLogs(errorLog: string, target: string): any {
   const result: any = {}
-  
+
   try {
     // Extract SSL grade
     const sslMatch = errorLog.match(/SSL analysis completed for (.+?): Grade ([A-F])/i)
@@ -58,7 +59,7 @@ function extractScanDataFromLogs(errorLog: string, target: string): any {
     const techMatch1 = errorLog.match(/Technologies found for (.+?): ({[^}]+})/i)
     const techMatch2 = errorLog.match(/Technologies found for (.+?):\s*({[^}]+})/i)
     const techMatch = techMatch1 || techMatch2
-    
+
     if (techMatch) {
       try {
         let techStr = techMatch[2]
@@ -75,7 +76,7 @@ function extractScanDataFromLogs(errorLog: string, target: string): any {
         // If parsing fails, try to extract individual technologies
         const serverMatch = errorLog.match(/['"]server['"]:\s*['"]([^'"]+)['"]/i)
         const phpMatch = errorLog.match(/['"]x-powered-by['"]:\s*['"]([^'"]+)['"]/i)
-        
+
         const technologies: any[] = []
         if (serverMatch) {
           technologies.push({ name: serverMatch[1] })
@@ -83,7 +84,7 @@ function extractScanDataFromLogs(errorLog: string, target: string): any {
         if (phpMatch) {
           technologies.push({ name: phpMatch[1] })
         }
-        
+
         if (technologies.length > 0) {
           result.tech = { technologies }
         }
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
       '/scan/headers',
       '/scan/tech',
       '/scan/subdomains',
+      '/scan/cdn-bypass',
       '/scan/multi',
     ]
 
@@ -161,7 +163,7 @@ export async function POST(request: NextRequest) {
       // Sometimes MCP server returns error but scan data is still available
       const responseText = await response.text()
       let parsedResponse: any = null
-      
+
       try {
         parsedResponse = JSON.parse(responseText)
       } catch {
@@ -173,7 +175,7 @@ export async function POST(request: NextRequest) {
         // Sometimes MCP server errors but scan results are in the response
         if (parsedResponse && typeof parsedResponse === 'object') {
           // Look for scan results in error response
-          const hasScanData = 
+          const hasScanData =
             parsedResponse.ports ||
             parsedResponse.ssl ||
             parsedResponse.headers ||
@@ -200,7 +202,7 @@ export async function POST(request: NextRequest) {
             // Scan completed but MCP server had error sending response
             // Extract partial data from logs
             const extractedData = extractScanDataFromLogs(errorDetail, data?.target || '')
-            
+
             if (extractedData && Object.keys(extractedData).length > 0) {
               console.warn('Extracted partial scan data from error logs:', extractedData)
               return NextResponse.json({
@@ -225,9 +227,62 @@ export async function POST(request: NextRequest) {
 
       // Response is OK, return parsed data
       const result = parsedResponse || JSON.parse(responseText)
+
+      // Log raw response from backend
+      console.log(`[API Route] ${endpoint} - Raw response from backend:`, JSON.stringify(result, null, 2))
+
+      // Extract actual data from result field if present
+      // Backend returns: { success: true, result: { vulnerabilities: [] } }
+      // We need to extract the actual data from 'result' field
+      let actualData = result
+      if (result.result) {
+        actualData = result.result
+        console.log('[API Route] Extracted data from result field')
+      }
+
+      // Check if /scan/multi returned a markdown report string
+      if (endpoint === '/scan/multi' && typeof actualData === 'string') {
+        console.log('[API Route] Multi-scan returned markdown report, parsing...')
+
+        // Parse the markdown report to extract structured data
+        const parsedData = parseMultiScanMarkdownReport(actualData)
+        console.log('[API Route] Parsed multi-scan data:', JSON.stringify(parsedData, null, 2))
+
+        actualData = parsedData
+      }
+
+      // Check if /scan/tech returned a markdown report string
+      if (endpoint === '/scan/tech' && typeof actualData === 'string') {
+        console.log('[API Route] Tech detection returned markdown, parsing...')
+
+        // Parse tech detection markdown
+        // Format: "**Detected Technologies:**\n- WordPress\n- Angular\n"
+        const techMatch = actualData.match(/\*\*Detected Technologies:\*\*\n([\s\S]+)/i)
+        if (techMatch) {
+          const techLines = techMatch[1].trim().split('\n')
+          const technologies = techLines
+            .filter(line => line.trim().startsWith('-'))
+            .map(line => ({
+              name: line.replace(/^-\s*/, '').trim(),
+              version: ''
+            }))
+
+          actualData = { technologies }
+          console.log('[API Route] Parsed tech data:', actualData)
+        } else {
+          actualData = { technologies: [] }
+        }
+      }
+
+      // Special logging for web scan
+      if (endpoint === '/scan/web') {
+        console.log('[API Route] Web scan vulnerabilities:', actualData.vulnerabilities)
+        console.log('[API Route] Web scan vulnerabilities count:', actualData.vulnerabilities?.length || 0)
+      }
+
       return NextResponse.json({
         success: true,
-        data: result,
+        data: actualData,
       })
     } catch (fetchError: any) {
       clearTimeout(timeoutId)

@@ -184,6 +184,21 @@ export async function scanSubdomains(
 }
 
 /**
+ * CDN Bypass Scan
+ * POST /scan/cdn-bypass
+ */
+export async function scanCDNBypass(
+  url: string,
+  options?: Record<string, any>
+): Promise<ScanResponse & { data?: any }> {
+  return callApi<any>('/scan/cdn-bypass', {
+    url,
+    target: url,
+    ...options,
+  })
+}
+
+/**
  * Multi-Scan (All scans in one)
  * POST /scan/multi
  */
