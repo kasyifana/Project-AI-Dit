@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
+import { generateAuditPDF } from '@/lib/utils/generatePDF'
+import { calculateAuditScores } from '@/lib/utils/calculateScores'
+import { generateExecutiveSummary } from '@/lib/utils/generateExecutiveSummary'
 import {
   Download,
   CheckCircle,
@@ -56,11 +59,6 @@ export default function ResultPage() {
     { name: 'Low', value: result.actionItems.filter(a => a.priority === 'Low').length, color: '#10b981' },
   ]
 
-  const handleDownload = () => {
-    showToast('Fitur download akan segera tersedia', 'info')
-    // In a real app, this would generate and download a PDF
-  }
-
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -94,6 +92,40 @@ export default function ResultPage() {
       Low: 'bg-green-100 text-green-800 border-green-200',
     }
     return colors[severity as keyof typeof colors] || ''
+  }
+
+  const handleDownload = async () => {
+    try {
+      showToast('Generating PDF...', 'info')
+
+      // Get scan results and URL with fallbacks
+      const scanResults = (paymentState as any).scanResults || {}
+      const targetUrl = (result as any).url || (paymentState.orderData as any)?.website || 'website'
+
+      // Calculate scores
+      const scoringResult = calculateAuditScores(scanResults, result.findings)
+
+      // Generate executive summary
+      const executiveSummary = generateExecutiveSummary(
+        targetUrl,
+        scoringResult,
+        scanResults
+      )
+
+      // Generate PDF
+      await generateAuditPDF({
+        targetUrl,
+        auditResult: result,
+        scoringResult,
+        executiveSummary,
+        scanResults
+      })
+
+      showToast('PDF downloaded successfully!', 'success')
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      showToast('Failed to generate PDF', 'error')
+    }
   }
 
   return (
