@@ -285,21 +285,51 @@ export default function ResultPage() {
                         8080: { name: 'HTTP Proxy', risk: 'medium' },
                       }
                       const info = portInfo[port] || { name: 'Unknown Service', risk: 'medium' as const }
-                      const riskColor = info.risk === 'high' ? 'red' : info.risk === 'medium' ? 'yellow' : 'green'
 
-                      return (
-                        <div key={idx} className={`bg-${riskColor}-50 border border-${riskColor}-200 rounded-lg p-3`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-lg font-bold text-${riskColor}-600`}>{port}</span>
-                              <span className="text-sm text-gray-600">{info.name}</span>
+                      // Use conditional rendering for proper Tailwind class support
+                      if (info.risk === 'high') {
+                        return (
+                          <div key={idx} className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-red-600">{port}</span>
+                                <span className="text-sm text-gray-600">{info.name}</span>
+                              </div>
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800">
+                                HIGH
+                              </span>
                             </div>
-                            <span className={`px-2 py-1 rounded text-xs font-semibold bg-${riskColor}-100 text-${riskColor}-800`}>
-                              {info.risk.toUpperCase()}
-                            </span>
                           </div>
-                        </div>
-                      )
+                        )
+                      } else if (info.risk === 'medium') {
+                        return (
+                          <div key={idx} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-yellow-600">{port}</span>
+                                <span className="text-sm text-gray-600">{info.name}</span>
+                              </div>
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                MEDIUM
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      } else {
+                        return (
+                          <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-green-600">{port}</span>
+                                <span className="text-sm text-gray-600">{info.name}</span>
+                              </div>
+                              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
+                                LOW
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      }
                     })}
                   </div>
                 </div>
@@ -410,7 +440,9 @@ export default function ResultPage() {
                         {Object.entries(paymentState.scanResults.headers.headers).map(([key, value]: [string, any], idx: number) => (
                           <div key={idx} className="bg-green-50 border border-green-200 rounded p-2 text-sm">
                             <span className="font-semibold text-green-800">{key}:</span>
-                            <span className="text-gray-700 ml-2 font-mono text-xs break-all">{value}</span>
+                            <span className="text-gray-700 ml-2 font-mono text-xs break-all">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </span>
                           </div>
                         ))}
                       </div>
