@@ -18,7 +18,10 @@ import {
   ArrowRight,
   Share2,
   TrendingUp,
-  FileText
+  FileText,
+  Link as LinkIcon,
+  Shield,
+  Gauge
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
@@ -232,6 +235,205 @@ export default function ResultPage() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Detailed Scan Results Sections */}
+          {paymentState.scanResults && (
+            <>
+              {/* Subdomain Enumeration Results */}
+              {paymentState.scanResults.subdomains?.subdomains && paymentState.scanResults.subdomains.subdomains.length > 0 && (
+                <div className="card mb-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <LinkIcon className="w-6 h-6 text-primary-600" />
+                    Subdomain Enumeration Results
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    Ditemukan <strong>{paymentState.scanResults.subdomains.subdomains.length}</strong> subdomain yang terhubung dengan domain utama.
+                  </p>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {paymentState.scanResults.subdomains.subdomains.map((subdomain: string, idx: number) => (
+                      <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <span className="text-sm font-mono text-gray-800 break-all">{subdomain}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Port Scan Results */}
+              {paymentState.scanResults.ports?.open_ports && paymentState.scanResults.ports.open_ports.length > 0 && (
+                <div className="card mb-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-primary-600" />
+                    Port Scan Results
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    Ditemukan <strong>{paymentState.scanResults.ports.open_ports.length}</strong> port yang terbuka pada server.
+                  </p>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {paymentState.scanResults.ports.open_ports.map((port: number, idx: number) => {
+                      const portInfo: Record<number, { name: string; risk: 'high' | 'medium' | 'low' }> = {
+                        21: { name: 'FTP', risk: 'high' },
+                        22: { name: 'SSH', risk: 'medium' },
+                        23: { name: 'Telnet', risk: 'high' },
+                        25: { name: 'SMTP', risk: 'medium' },
+                        80: { name: 'HTTP', risk: 'low' },
+                        443: { name: 'HTTPS', risk: 'low' },
+                        3306: { name: 'MySQL', risk: 'high' },
+                        5432: { name: 'PostgreSQL', risk: 'high' },
+                        3389: { name: 'RDP', risk: 'high' },
+                        8080: { name: 'HTTP Proxy', risk: 'medium' },
+                      }
+                      const info = portInfo[port] || { name: 'Unknown Service', risk: 'medium' as const }
+                      const riskColor = info.risk === 'high' ? 'red' : info.risk === 'medium' ? 'yellow' : 'green'
+
+                      return (
+                        <div key={idx} className={`bg-${riskColor}-50 border border-${riskColor}-200 rounded-lg p-3`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-lg font-bold text-${riskColor}-600`}>{port}</span>
+                              <span className="text-sm text-gray-600">{info.name}</span>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs font-semibold bg-${riskColor}-100 text-${riskColor}-800`}>
+                              {info.risk.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Technology Stack */}
+              {paymentState.scanResults.tech?.technologies && paymentState.scanResults.tech.technologies.length > 0 && (
+                <div className="card mb-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <Gauge className="w-6 h-6 text-primary-600" />
+                    Detected Technologies
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    Teknologi yang terdeteksi digunakan pada website:
+                  </p>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {paymentState.scanResults.tech.technologies.map((tech: { name: string; version?: string }, idx: number) => (
+                      <div key={idx} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div className="font-semibold text-gray-800">{tech.name}</div>
+                        {tech.version && (
+                          <div className="text-sm text-gray-600 mt-1">Version: {tech.version}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SSL Certificate Details */}
+              {paymentState.scanResults.ssl && (
+                <div className="card mb-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-6 h-6 text-primary-600" />
+                    SSL/TLS Certificate Analysis
+                  </h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <span className="font-semibold">Security Grade:</span>
+                      <span className={`text-2xl font-bold ${paymentState.scanResults.ssl.grade === 'A+' || paymentState.scanResults.ssl.grade === 'A' ? 'text-green-600' :
+                        paymentState.scanResults.ssl.grade === 'B' || paymentState.scanResults.ssl.grade === 'C' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                        {paymentState.scanResults.ssl.grade || 'N/A'}
+                      </span>
+                    </div>
+
+                    {paymentState.scanResults.ssl.certificate && (
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="font-semibold text-gray-600">Subject:</span>
+                            <div className="font-mono text-gray-800 break-all">{paymentState.scanResults.ssl.certificate.subject}</div>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Issuer:</span>
+                            <div className="font-mono text-gray-800 break-all">{paymentState.scanResults.ssl.certificate.issuer}</div>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Valid From:</span>
+                            <div className="text-gray-800">{paymentState.scanResults.ssl.certificate.not_before}</div>
+                          </div>
+                          <div>
+                            <span className="font-semibold text-gray-600">Valid Until:</span>
+                            <div className="text-gray-800">{paymentState.scanResults.ssl.certificate.not_after}</div>
+                          </div>
+                          {paymentState.scanResults.ssl.certificate.key_size && (
+                            <div>
+                              <span className="font-semibold text-gray-600">Key Size:</span>
+                              <div className="text-gray-800">{paymentState.scanResults.ssl.certificate.key_size} bits</div>
+                            </div>
+                          )}
+                          {paymentState.scanResults.ssl.certificate.signature_algorithm && (
+                            <div>
+                              <span className="font-semibold text-gray-600">Algorithm:</span>
+                              <div className="text-gray-800">{paymentState.scanResults.ssl.certificate.signature_algorithm}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Security Headers Summary */}
+              {paymentState.scanResults.headers && (
+                <div className="card mb-8">
+                  <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-primary-600" />
+                    Security Headers Analysis
+                  </h2>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <span className="font-semibold">Security Score:</span>
+                      <span className={`text-2xl font-bold ${(paymentState.scanResults.headers.score || 0) >= 80 ? 'text-green-600' :
+                        (paymentState.scanResults.headers.score || 0) >= 50 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                        {paymentState.scanResults.headers.score || 0}/100
+                      </span>
+                    </div>
+                  </div>
+
+                  {paymentState.scanResults.headers.headers && Object.keys(paymentState.scanResults.headers.headers).length > 0 && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Present Headers:</h3>
+                      <div className="space-y-2">
+                        {Object.entries(paymentState.scanResults.headers.headers).map(([key, value]: [string, any], idx: number) => (
+                          <div key={idx} className="bg-green-50 border border-green-200 rounded p-2 text-sm">
+                            <span className="font-semibold text-green-800">{key}:</span>
+                            <span className="text-gray-700 ml-2 font-mono text-xs break-all">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentState.scanResults.headers.missing && paymentState.scanResults.headers.missing.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="font-semibold mb-2 text-red-600">Missing Headers:</h3>
+                      <div className="grid md:grid-cols-2 gap-2">
+                        {paymentState.scanResults.headers.missing.map((header: string, idx: number) => (
+                          <div key={idx} className="bg-red-50 border border-red-200 rounded p-2 text-sm text-red-800">
+                            {header}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
 
           {/* Findings */}
           <div className="card mb-8">

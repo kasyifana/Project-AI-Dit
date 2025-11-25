@@ -7,21 +7,21 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { usePayment } from '@/context/PaymentContext'
 import { useToast } from '@/components/Toast'
-import { 
-  scanPorts, 
-  scanSQL, 
-  scanWeb, 
-  scanXSS, 
-  scanSSL, 
-  scanHeaders, 
-  scanTech, 
+import {
+  scanPorts,
+  scanSQL,
+  scanWeb,
+  scanXSS,
+  scanSSL,
+  scanHeaders,
+  scanTech,
   scanSubdomains,
-  scanCDNBypass 
+  scanCDNBypass
 } from '@/lib/services/auditApi'
 import { transformScanResultsToAuditResult } from '@/lib/utils/transformResults'
-import { 
-  CheckCircle, 
-  Brain, 
+import {
+  CheckCircle,
+  Brain,
   ArrowRight,
   History,
   Sparkles,
@@ -35,7 +35,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { paymentState, setAuditResult } = usePayment()
+  const { paymentState, setAuditResult, setScanResults } = usePayment()
   const { showToast } = useToast()
 
   const [auditData, setAuditData] = useState({
@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const [scanProgress, setScanProgress] = useState<string>('')
   const [currentScan, setCurrentScan] = useState<string>('')
   const [completedScans, setCompletedScans] = useState<string[]>([])
-  const [scanResults, setScanResults] = useState<any>({})
+  const [localScanResults, setLocalScanResults] = useState<any>({}) // Renamed to avoid conflict
   const [quickMode, setQuickMode] = useState(true) // Quick mode by default
 
   useEffect(() => {
@@ -83,52 +83,51 @@ export default function DashboardPage() {
     setIsProcessing(true)
     setScanProgress('Memulai scan...')
     setCompletedScans([])
-    setScanResults({})
+    setLocalScanResults({})
 
     try {
       const results: any = {}
-      
+
       // Define all available scans
+      // NOTE: XSS dan SQL timeout ditingkatkan untuk ensure scan complete untuk pitching
       const allScans = [
         { name: 'SSL Certificate', key: 'ssl', fn: () => scanSSL(auditData.url), icon: '🔒', timeout: 30000, essential: true },
         { name: 'Security Headers', key: 'headers', fn: () => scanHeaders(auditData.url), icon: '🛡️', timeout: 20000, essential: true },
         { name: 'Port Scan', key: 'ports', fn: () => scanPorts(auditData.url), icon: '🔍', timeout: 60000, essential: true },
         { name: 'Web Vulnerabilities', key: 'web', fn: () => scanWeb(auditData.url), icon: '🌐', timeout: 120000, essential: true },
-        { name: 'XSS Testing', key: 'xss', fn: () => scanXSS(auditData.url), icon: '⚠️', timeout: 45000, essential: true },
-        { name: 'SQL Injection', key: 'sql', fn: () => scanSQL(auditData.url, { quick: true }), icon: '💉', timeout: 60000, essential: false },
+        { name: 'XSS Testing', key: 'xss', fn: () => scanXSS(auditData.url), icon: '⚠️', timeout: 300000, essential: true }, // 5 menit
+        { name: 'SQL Injection', key: 'sql', fn: () => scanSQL(auditData.url, { quick: true }), icon: '💉', timeout: 600000, essential: true }, // 10 menit - ALWAYS run
         { name: 'Technology Detection', key: 'tech', fn: () => scanTech(auditData.url), icon: '⚙️', timeout: 30000, essential: true },
         { name: 'Subdomain Enumeration', key: 'subdomains', fn: () => scanSubdomains(auditData.url), icon: '🔗', timeout: 45000, essential: true },
         { name: 'CDN Bypass', key: 'cdn', fn: () => scanCDNBypass(auditData.url), icon: '🌩️', timeout: 30000, essential: true },
       ]
-      
-      // Filter scans based on quick mode
-      const scans = quickMode 
-        ? allScans.filter(scan => scan.essential)
-        : allScans
+
+      // All scans are now essential for complete pitching demo
+      const scans = allScans
 
       // Run scans sequentially
       for (const scan of scans) {
         setCurrentScan(scan.name)
         setScanProgress(`${scan.icon} Scanning ${scan.name}...`)
-        
+
         try {
           // Create timeout promise
-          const timeoutPromise = new Promise((_, reject) => 
+          const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), scan.timeout)
           )
-          
+
           // Race between scan and timeout
           const response = await Promise.race([
             scan.fn(),
             timeoutPromise
           ]) as any
-          
+
           // Enhanced logging for debugging
           console.group(`📊 ${scan.name} Results`)
           console.log('Full Response:', response)
           console.log('Response Success:', response.success)
           console.log('Response Data:', response.data)
-          
+
           // Special logging for web scan
           if (scan.key === 'web') {
             console.log('🌐 WEB SCAN DETAILS:')
@@ -136,7 +135,7 @@ export default function DashboardPage() {
             console.log('- Vulnerabilities Count:', response.data?.vulnerabilities?.length || 0)
             console.log('- Issues Count Field:', response.data?.issues_count)
             console.log('- Raw Web Object:', JSON.stringify(response.data, null, 2))
-            
+
             // Log each vulnerability
             if (response.data?.vulnerabilities && Array.isArray(response.data.vulnerabilities)) {
               console.log(`📋 Found ${response.data.vulnerabilities.length} vulnerabilities:`)
@@ -146,7 +145,7 @@ export default function DashboardPage() {
             }
           }
           console.groupEnd()
-          
+
           // Store result even if not successful (might have partial data)
           if (response.success || response.data) {
             results[scan.key] = response.data
@@ -154,25 +153,25 @@ export default function DashboardPage() {
           } else {
             console.warn(`⚠️ ${scan.name} - No data received:`, response.error)
           }
-          
+
           // Mark as completed
           setCompletedScans(prev => [...prev, scan.name])
-          setScanResults(results)
-          
+          setLocalScanResults(results)
+
           // Small delay for better UX
           await new Promise(resolve => setTimeout(resolve, 300))
         } catch (error) {
           console.error(`Error in ${scan.name}:`, error)
-          
+
           // If timeout, show warning but continue
           if (error instanceof Error && error.message === 'Timeout') {
             console.warn(`${scan.name} timed out, skipping...`)
             showToast(`⚠️ ${scan.name} memakan waktu terlalu lama, di-skip`, 'warning')
           }
-          
+
           // Mark as completed even if failed/timeout
           setCompletedScans(prev => [...prev, scan.name])
-          
+
           // Continue with next scan even if one fails
         }
       }
@@ -213,7 +212,7 @@ export default function DashboardPage() {
           useLLM: true,
         }
       )
-      
+
       // Log transformed result
       console.group('🎯 TRANSFORMED AUDIT RESULT')
       console.log('Audit Result:', auditResult)
@@ -223,21 +222,24 @@ export default function DashboardPage() {
       console.log('Action Items:', auditResult.actionItems)
       console.groupEnd()
 
+      // Save raw scan results for detailed display in results page
+      setScanResults(results)
+
       setAuditResult(auditResult)
       setIsProcessing(false)
       setScanProgress('')
       setCurrentScan('')
-      
+
       showToast('✅ Audit selesai! Lihat hasil audit Anda.', 'success')
       router.push('/result')
     } catch (error) {
       console.error('Scan error:', error)
       setIsProcessing(false)
       setScanProgress('')
-      
+
       // More user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat melakukan scan'
-      
+
       // Check if error mentions scan completion
       if (errorMessage.includes('SSL analysis completed') || errorMessage.includes('Scan completed')) {
         showToast('Scan selesai namun terjadi error. Silakan coba lagi atau hubungi support.', 'warning')
@@ -357,7 +359,7 @@ export default function DashboardPage() {
                           ⚡ Quick Mode (Recommended)
                         </label>
                         <p className="text-sm text-gray-600 mt-1">
-                          Skip SQL Injection scan yang memakan waktu lama (~3-5 menit). 
+                          Skip SQL Injection scan yang memakan waktu lama (~3-5 menit).
                           Quick mode hanya butuh ~2-3 menit untuk menyelesaikan semua scan lainnya.
                         </p>
                       </div>
@@ -373,8 +375,7 @@ export default function DashboardPage() {
                           <div className="font-semibold text-white">{scanProgress}</div>
                           {currentScan && (
                             <div className="text-sm text-[#A0AEC0] mt-1">
-                              {completedScans.length}/{quickMode ? 8 : 9} scans completed
-                              {quickMode && ' (Quick Mode)'}
+                              {completedScans.length}/9 scans completed
                             </div>
                           )}
                         </div>
@@ -382,9 +383,9 @@ export default function DashboardPage() {
 
                       {/* Progress Bar */}
                       <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                        <div 
+                        <div
                           className="bg-gradient-to-r from-[#1FB6FF] to-primary-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${(completedScans.length / (quickMode ? 8 : 9)) * 100}%` }}
+                          style={{ width: `${(completedScans.length / 9) * 100}%` }}
                         />
                       </div>
 
@@ -405,15 +406,14 @@ export default function DashboardPage() {
                           return (
                             <div
                               key={scan.name}
-                              className={`flex items-center gap-2 px-3 py-2 rounded ${
-                                isSkipped
-                                  ? 'bg-gray-900/50 text-gray-600 line-through'
-                                  : completedScans.includes(scan.name)
+                              className={`flex items-center gap-2 px-3 py-2 rounded ${isSkipped
+                                ? 'bg-gray-900/50 text-gray-600 line-through'
+                                : completedScans.includes(scan.name)
                                   ? 'bg-green-500/20 text-green-400'
                                   : currentScan === scan.name
-                                  ? 'bg-[#1FB6FF]/20 text-[#1FB6FF] animate-pulse'
-                                  : 'bg-gray-800/50 text-gray-500'
-                              }`}
+                                    ? 'bg-[#1FB6FF]/20 text-[#1FB6FF] animate-pulse'
+                                    : 'bg-gray-800/50 text-gray-500'
+                                }`}
                             >
                               <span>{scan.icon}</span>
                               <span className="text-xs">

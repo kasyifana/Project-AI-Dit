@@ -7,6 +7,7 @@ interface PaymentState {
   orderData: OrderData | null
   paymentStatus: 'pending' | 'verified' | 'rejected' | null
   auditResult: AuditResult | null
+  scanResults?: any // Store raw scan results for detailed display
 }
 
 export interface OrderData {
@@ -51,6 +52,7 @@ interface PaymentContextType {
   setOrderData: (data: OrderData) => void
   setPaymentStatus: (status: 'pending' | 'verified' | 'rejected') => void
   setAuditResult: (result: AuditResult) => void
+  setScanResults: (results: any) => void
   resetPayment: () => void
 }
 
@@ -95,12 +97,17 @@ export function PaymentProvider({ children }: { children: React.ReactNode }) {
     setPaymentState(prev => ({ ...prev, auditResult: result }))
   }
 
+  const setScanResults = (results: any) => {
+    setPaymentState(prev => ({ ...prev, scanResults: results }))
+  }
+
   const resetPayment = () => {
     setPaymentState({
       isPaid: false,
       orderData: null,
       paymentStatus: null,
       auditResult: null,
+      scanResults: null,
     })
     if (typeof window !== 'undefined') {
       localStorage.removeItem('paymentState')
@@ -114,6 +121,7 @@ export function PaymentProvider({ children }: { children: React.ReactNode }) {
         setOrderData,
         setPaymentStatus,
         setAuditResult,
+        setScanResults,
         resetPayment,
       }}
     >
