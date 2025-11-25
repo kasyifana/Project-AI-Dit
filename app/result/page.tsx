@@ -250,12 +250,31 @@ export default function ResultPage() {
                     Ditemukan <strong>{paymentState.scanResults.subdomains.subdomains.length}</strong> subdomain yang terhubung dengan domain utama.
                   </p>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {paymentState.scanResults.subdomains.subdomains.map((subdomain: string, idx: number) => (
-                      <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm font-mono text-gray-800 break-all">{subdomain}</span>
-                      </div>
-                    ))}
+                    {paymentState.scanResults.subdomains.subdomains.map((subdomain: any, idx: number) => {
+                      // Handle both string and object formats
+                      const subdomainName = typeof subdomain === 'string' ? subdomain : subdomain.name || subdomain.subdomain || JSON.stringify(subdomain)
+                      const subdomainIP = typeof subdomain === 'object' ? subdomain.ip : null
+                      const subdomainStatus = typeof subdomain === 'object' ? subdomain.status : null
+
+                      return (
+                        <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <LinkIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                            <span className="text-sm font-mono text-gray-800 break-all">{subdomainName}</span>
+                          </div>
+                          {subdomainIP && (
+                            <div className="text-xs text-gray-600 ml-6">
+                              IP: {subdomainIP}
+                            </div>
+                          )}
+                          {subdomainStatus && (
+                            <div className="text-xs text-gray-500 ml-6">
+                              Status: {subdomainStatus}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
